@@ -1,62 +1,41 @@
-const express = require('express');
-const { default: makeWASocket, DisconnectReason } = require('@whiskeysockets/baileys');
-const { useSingleFileAuthState } = require('@whiskeysockets/baileys/lib/utils/auth');
-const { Boom } = require('@hapi/boom');
-const qrcode = require('qrcode-terminal');
-const fs = require('fs');
+const express = require("express");
+const cors = require("cors");
+const { default: makeWASocket, useSingleFileAuthState } = require("@whiskeysockets/baileys");
+const { Boom } = require("@hapi/boom");
+const fs = require("fs");
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(express.static('public'));
+app.use(cors());
+app.use(express.static("public"));
 
-const { state, saveState } = useSingleFileAuthState('./auth_info.json');
+const { state, saveState } = useSingleFileAuthState("./auth_info.json");
 
 let sock;
 
-async function startSock() {
-  sock = makeWASocket({
-    auth: state,
-    printQRInTerminal: true
-  });
-
-  sock.ev.on('connection.update', (update) => {
-    const { connection, qr, lastDisconnect } = update;
-    if (qr) {
-      qrcode.generate(qr, { small: true });
-    }
-
-    if (connection === 'close') {
-      const shouldReconnect =
-        lastDisconnect?.error instanceof Boom &&
-        lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut;
-
-      if (shouldReconnect) startSock();
-    } else if (connection === 'open') {
-      console.log('✅ واتساب جاهز!');
-    }
-  });
-
-  sock.ev.on('creds.update', saveState);
+async function startBot() {
+  sock = makeWASocket({ auth: state });
+  sock.ev.on("creds.update", saveState);
 }
 
-startSock();
+startBot();
 
-app.post('/generate', async (req, res) => {
-  const phone = req.body.phone;
-  if (!phone) return res.status(400).json({ error: 'رقم الهاتف مطلوب' });
+app.get("/code", async (req, res) => {
+  const number = req.query.number;
+  if (!number || number.length < 8) {
+    return res.status(400).json({ code: "❌ رقم غير صالح" });
+  }
 
   try {
-    const id = phone.replace(/\D/g, '') + '@s.whatsapp.net';
-    await sock.sendMessage(id, { text: '✅ تم ربط الرقم بنجاح. مرحبًا بك في بوت ترزان!' });
-    res.json({ code: '📩 تم إرسال رسالة ترحيب لرقمك' });
+    const code = await sock.requestPairingCode(number);
+    res.json({ code });
   } catch (err) {
-    console.error('❌ خطأ في الإرسال:', err);
-    res.status(500).json({ error: 'فشل إرسال الرسالة. تحقق من الرقم أو الاتصال' });
+    console.error("❌ خطأ في توليد الكود:", err);
+    res.status(500).json({ code: "⚠️ فشل توليد الكود. تحقق من الرقم!" });
   }
 });
 
 app.listen(port, () => {
-  console.log(`🚀 الخادم يعمل على http://localhost:${port}`);
+  console.log(`🚀 السيرفر يعمل على http://localhost:${port}`);
 });
