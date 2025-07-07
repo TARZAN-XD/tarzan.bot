@@ -1,8 +1,9 @@
 const express = require('express');
-const { default: makeWASocket, useSingleFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const baileys = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
-const fs = require('fs');
+
+const { makeWASocket, useSingleFileAuthState, DisconnectReason } = baileys;
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -22,6 +23,7 @@ async function connectToWhatsApp() {
 
   sock.ev.on('connection.update', (update) => {
     const { connection, qr, lastDisconnect } = update;
+
     if (qr) {
       console.log('📷 QR Code:\n');
       qrcode.generate(qr, { small: true });
