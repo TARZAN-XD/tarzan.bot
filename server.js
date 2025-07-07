@@ -2,8 +2,13 @@ const express = require('express');
 const baileys = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
+const fs = require('fs');
+const path = require('path');
 
-const { makeWASocket, useSingleFileAuthState, DisconnectReason } = baileys;
+const { default: makeWASocket, DisconnectReason } = baileys;
+
+// استيراد useSingleFileAuthState بطريقة صحيحة
+const { useSingleFileAuthState } = require('@whiskeysockets/baileys/lib/Utils/auth');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -11,7 +16,9 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static('public'));
 
-const { state, saveState } = useSingleFileAuthState('./auth_info.json');
+// مسار ملف الجلسة
+const authFile = path.join(__dirname, 'auth_info.json');
+const { state, saveState } = useSingleFileAuthState(authFile);
 
 let sock;
 
