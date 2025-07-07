@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>ربط واتساب</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 توليد كود ربط واتساب</h1>
+    <input type="text" id="phone" placeholder="أدخل رقم هاتفك">
+    <button onclick="generateCode()">توليد الكود</button>
+
+    <div id="result" style="display:none;">
+      <input type="text" id="codeField" readonly>
+      <button onclick="copyCode()">📋 نسخ الكود</button>
+    </div>
+  </div>
+
+  <script>
+    async function generateCode() {
+      const phone = document.getElementById('phone').value;
+      const res = await fetch('/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone })
+      });
+      const data = await res.json();
+      document.getElementById('codeField').value = data.code;
+      document.getElementById('result').style.display = 'block';
+    }
+
+    function copyCode() {
+      const codeField = document.getElementById('codeField');
+      codeField.select();
+      document.execCommand("copy");
+      alert("✅ تم نسخ الكود!");
+    }
+  </script>
+</body>
+</html>
