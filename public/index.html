@@ -2,39 +2,93 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>ربط واتساب</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>رمز الاقتران - واتساب</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #222, #111);
+      color: white;
+      text-align: center;
+      padding: 50px;
+    }
+    h1 {
+      color: #00ff00;
+    }
+    input, button {
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      margin: 10px;
+    }
+    input {
+      width: 250px;
+    }
+    button {
+      background-color: #00c853;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #009624;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 20px;
+      background: #fff;
+      color: #000;
+      padding: 15px;
+      border-radius: 10px;
+      display: inline-block;
+    }
+    .copy-btn {
+      background: #ff1744;
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🔐 توليد كود ربط واتساب</h1>
-    <input type="text" id="phone" placeholder="أدخل رقم هاتفك">
-    <button onclick="generateCode()">توليد الكود</button>
+  <h1>🔐 توليد رمز الاقتران</h1>
+  <p>ادخل رقم واتساب مع كود الدولة (مثال: 9665xxxxxx)</p>
+  <input type="tel" id="number" placeholder="مثال: 9665xxxxxxx" />
+  <br>
+  <button onclick="generateCode()">توليد الكود</button>
 
-    <div id="result" style="display:none;">
-      <input type="text" id="codeField" readonly>
-      <button onclick="copyCode()">📋 نسخ الكود</button>
-    </div>
+  <div id="result" style="display: none;">
+    <div>رمز الاقتران:</div>
+    <div id="codeText"></div>
+    <button class="copy-btn" onclick="copyCode()">نسخ</button>
   </div>
 
   <script>
     async function generateCode() {
-      const phone = document.getElementById('phone').value;
-      const res = await fetch('/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone })
-      });
-      const data = await res.json();
-      document.getElementById('codeField').value = data.code;
-      document.getElementById('result').style.display = 'block';
+      const number = document.getElementById('number').value.trim();
+      const result = document.getElementById('result');
+      const codeText = document.getElementById('codeText');
+
+      if (!number || number.length < 8) {
+        alert("❌ أدخل رقمًا صحيحًا مع كود الدولة");
+        return;
+      }
+
+      result.style.display = 'block';
+      codeText.innerText = "⏳ جاري توليد الكود...";
+
+      try {
+        const res = await fetch(`/code?number=${number}`);
+        const data = await res.json();
+        codeText.innerText = data.code;
+      } catch (err) {
+        codeText.innerText = "❌ فشل توليد الكود";
+      }
     }
 
     function copyCode() {
-      const codeField = document.getElementById('codeField');
-      codeField.select();
-      document.execCommand("copy");
-      alert("✅ تم نسخ الكود!");
+      const text = document.getElementById("codeText").innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        alert("✅ تم نسخ الكود!");
+      });
     }
   </script>
 </body>
