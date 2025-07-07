@@ -1,14 +1,8 @@
 const express = require('express');
-const baileys = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useSingleFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
-const path = require('path');
-
-const { default: makeWASocket, DisconnectReason } = baileys;
-
-// استيراد useSingleFileAuthState بطريقة صحيحة
-const { useSingleFileAuthState } = require('@whiskeysockets/baileys/lib/Utils/auth');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -16,13 +10,11 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static('public'));
 
-// مسار ملف الجلسة
-const authFile = path.join(__dirname, 'auth_info.json');
-const { state, saveState } = useSingleFileAuthState(authFile);
+const { state, saveState } = useSingleFileAuthState('./auth_info.json');
 
 let sock;
 
-async function connectToWhatsApp() {
+async function startSocket() {
   sock = makeWASocket({
     auth: state,
     printQRInTerminal: true,
@@ -32,7 +24,7 @@ async function connectToWhatsApp() {
     const { connection, qr, lastDisconnect } = update;
 
     if (qr) {
-      console.log('📷 QR Code:\n');
+      console.log('📷 QR CODE:');
       qrcode.generate(qr, { small: true });
     }
 
@@ -41,8 +33,10 @@ async function connectToWhatsApp() {
         lastDisconnect?.error instanceof Boom &&
         lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut;
 
-      console.log('❌ الاتصال انقطع. إعادة الاتصال؟:', shouldReconnect);
-      if (shouldReconnect) connectToWhatsApp();
+      console.log('🔌 الاتصال انقطع. إعادة الاتصال؟', shouldReconnect);
+      if (shouldReconnect) {
+        startSocket();
+      }
     } else if (connection === 'open') {
       console.log('✅ تم الاتصال بواتساب!');
     }
@@ -51,7 +45,7 @@ async function connectToWhatsApp() {
   sock.ev.on('creds.update', saveState);
 }
 
-connectToWhatsApp();
+startSocket();
 
 app.post('/generate', async (req, res) => {
   const phone = req.body.phone;
@@ -59,14 +53,14 @@ app.post('/generate', async (req, res) => {
 
   try {
     const id = phone.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-    await sock.sendMessage(id, { text: `🎉 تم ربط رقمك بالمنصة بنجاح! مرحباً بك.` });
-    return res.json({ code: '📨 تم إرسال رسالة ترحيب إلى رقم واتسابك ✅' });
-  } catch (err) {
-    console.error('❌ خطأ أثناء الإرسال:', err);
-    return res.status(500).json({ error: 'فشل في إرسال الرسالة. تأكد من الرقم ومن أنه يستخدم واتساب.' });
+    await sock.sendMessage(id, { text: `✅ تم ربط واتسابك بالخدمة بنجاح! أهلاً بك.` });
+    return res.json({ code: '📩 تم إرسال رسالة الترحيب!' });
+  } catch (error) {
+    console.error('❌ فشل الإرسال:', error);
+    return res.status(500).json({ error: 'فشل إرسال الرسالة. تأكد من الرقم أو اتصال البوت.' });
   }
 });
 
 app.listen(port, () => {
-  console.log(`🚀 الخادم يعمل على http://localhost:${port}`);
+  console.log(`🚀 السيرفر شغال على http://localhost:${port}`);
 });
